@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Result {
+  WIN
+  LOSS
+  DRAW
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+  decks Deck[]
+}
+
+model Deck {
+  id        Int         @id @default(autoincrement())
+  name      String
+  createdAt DateTime    @default(now())
+  userId    Int?
+  user      User?       @relation(fields: [userId], references: [id])
+  cards     DeckCard[]
+  matches   Match[]
+}
+
+model Card {
+  id         String  @id            // use Scryfall's id when we persist
+  name       String
+  typeLine   String?
+  manaCost   String?
+  oracleText String?
+  imageUri   String?
+  decks      DeckCard[]
+}
+
+model DeckCard {
+  deckId  Int
+  cardId  String
+  qty     Int @default(1)
+  deck    Deck @relation(fields: [deckId], references: [id])
+  card    Card @relation(fields: [cardId], references: [id])
+  @@id([deckId, cardId])
+}
+
+model Match {
+  id        Int      @id @default(autoincrement())
+  deckId    Int
+  opponent  String?
+  result    Result
+  playedAt  DateTime @default(now())
+  deck      Deck     @relation(fields: [deckId], references: [id])
+}
