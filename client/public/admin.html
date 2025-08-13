@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>MTG Admin (jQuery)</title>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+  <h1>Decks Export</h1>
+  <button id="load">Load Decks</button>
+  <button id="csv">Export CSV</button>
+  <table id="t" border="1">
+    <thead>
+      <tr><th>ID</th><th>Name</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let deckList = [];
+
+    const loadDecksButton = $("#load");
+    const exportCsvButton = $("#csv");
+    const decksTableBody = $("#t tbody");
+
+    loadDecksButton.on("click", async () => {
+      deckList = await $.get("/api/decks");
+
+      const tableRowsHtml = deckList
+        .map(deck => `<tr><td>${deck.id}</td><td>${deck.name}</td></tr>`)
+        .join("");
+
+      decksTableBody.html(tableRowsHtml);
+    });
+
+    exportCsvButton.on("click", () => {
+      const csvHeader = "id,name\n";
+      const csvBody = deckList
+        .map(deck => `${deck.id},"${deck.name.replace(/"/g, '""')}"`)
+        .join("\n");
+
+      const csvBlob = new Blob([csvHeader + csvBody], { type: "text/csv" });
+      const csvUrl = URL.createObjectURL(csvBlob);
+
+      const downloadLink = Object.assign(document.createElement("a"), {
+        href: csvUrl,
+        download: "decks.csv"
+      });
+
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      URL.revokeObjectURL(csvUrl);
+    });
+  </script>
+</body>
+</html>
