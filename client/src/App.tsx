@@ -95,7 +95,7 @@ type FiltersState = {
 const buildQueryWithFilters = (
   baseQuery: string,
   filters: FiltersState
-) => { 
+) => {
   let searchQuery = baseQuery.trim();
 
   if (filters.type && filters.type !== "any") searchQuery += ` t:${filters.type}`;
@@ -104,7 +104,7 @@ const buildQueryWithFilters = (
     const joined = filters.colors.join("");
     searchQuery += ` id<=${joined}`;
   }
- 
+
 
   if (filters.cmc) {
     const [min, max] = filters.cmc;
@@ -121,13 +121,13 @@ const buildQueryWithFilters = (
   return searchQuery.trim();
 
   const SET_OPTIONS = [
-  { code: "any", label: "Any Set" },
-  { code: "mh3", label: "Modern Horizons 3" },
-  { code: "otj", label: "Outlaws of Thunder Junction" },
-  { code: "rvr", label: "Ravnica Remastered" },
-  { code: "ltr", label: "The Lord of the Rings: Tales of Middle-earth" },
-  { code: "one", label: "Phyrexia: All Will Be One" },
-];
+    { code: "any", label: "Any Set" },
+    { code: "mh3", label: "Modern Horizons 3" },
+    { code: "otj", label: "Outlaws of Thunder Junction" },
+    { code: "rvr", label: "Ravnica Remastered" },
+    { code: "ltr", label: "The Lord of the Rings: Tales of Middle-earth" },
+    { code: "one", label: "Phyrexia: All Will Be One" },
+  ];
 
 }
 /* --------------------------------- DECKS --------------------------------- */
@@ -224,6 +224,9 @@ const CardDatabase: React.FC = () => {
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 
   const [selectedType, setSelectedType] = useState<string>("any");
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [cmcRange, setCmcRange] = useState<[number, number]>([0, 20]);
+  const [selectedSet, setSelectedSet] = useState<string>("any");
   const [predictiveOptions, setPredictiveOptions] = useState<string[]>([]);
   const [isPredictiveLoading, setIsPredictiveLoading] = useState(false);
   const [predictiveDebounceId, setPredictiveDebounceId] = useState<number | null>(null);
@@ -254,7 +257,12 @@ const CardDatabase: React.FC = () => {
   const searchCards = async () => {
     setIsSearching(true);
     try {
-      const finalQuery = buildQueryWithFilters(scryfallQuery, { type: selectedType });
+      const finalQuery = buildQueryWithFilters(scryfallQuery, {
+        type: selectedType,
+        colors: selectedColors,
+        cmc: cmcRange,
+        setCode: selectedSet,
+      });
       const response = await fetch(`/api/scryfall/search?q=${encodeURIComponent(finalQuery)}`);
       const scryfallResponse = await response.json();
       const cards: ScryfallCard[] = scryfallResponse.data || [];
@@ -311,6 +319,30 @@ const CardDatabase: React.FC = () => {
       <Typography variant="h5">Card Database</Typography>
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={"center"}
+        >
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <Typography variant="body2" sx={{ mr: 1.5, whiteSpace: "nowrap" }}>
+              Colors
+            </Typography>
+            <ToggleButtonGroup
+              value={selectedColors}
+              onChange={(_e, next) => setSelectedColors(next ?? [])}
+              size="small"
+              aria-label="colors"
+            >
+              <ToggleButton value="W" aria-label="white">W</ToggleButton>
+              <ToggleButton value="U" aria-label="blue">U</ToggleButton>
+              <ToggleButton value="B" aria-label="black">B</ToggleButton>
+              <ToggleButton value="R" aria-label="red">R</ToggleButton>
+              <ToggleButton value="G" aria-label="green">G</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+
+        </Stack>
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel id="type-filter-label">Card Type</InputLabel>
           <Select
