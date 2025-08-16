@@ -21,6 +21,14 @@ import {
   Divider,
   Autocomplete,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  ToggleButton,
+  ToggleButtonGroup,
+  Slider,
+  Box,
 } from "@mui/material";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
@@ -77,8 +85,52 @@ const App: React.FC<AppProps> = ({ mode, setMode }) => {
   );
 };
 
-/* --------------------------------- DECKS --------------------------------- */
+type FiltersState = {
+  type: string;
+  colors: string[];
+  cmc: [number, number];
+  setCode: string;
+}
 
+const buildQueryWithFilters = (
+  baseQuery: string,
+  filters: FiltersState
+) => { 
+  let searchQuery = baseQuery.trim();
+
+  if (filters.type && filters.type !== "any") searchQuery += ` t:${filters.type}`;
+
+  if (filters.color && filters.colors.length > 0) {
+    const joined = filters.colors.join("");
+    searchQuery += ` id<=${joined}`;
+  }
+ 
+
+  if (filters.cmc) {
+    const [min, max] = filters.cmc;
+
+    if (min > 0) searchQuery += ` cmc>=${min}`;
+    if (max < 20) searchQuery += ` cmc<=${max}`;
+  }
+
+  if (filters.setCode && filters.setCode !== "any") {
+    searchQuery += ` s:${filters.setCode}`;
+  }
+
+
+  return searchQuery.trim();
+
+  const SET_OPTIONS = [
+  { code: "any", label: "Any Set" },
+  { code: "mh3", label: "Modern Horizons 3" },
+  { code: "otj", label: "Outlaws of Thunder Junction" },
+  { code: "rvr", label: "Ravnica Remastered" },
+  { code: "ltr", label: "The Lord of the Rings: Tales of Middle-earth" },
+  { code: "one", label: "Phyrexia: All Will Be One" },
+];
+
+}
+/* --------------------------------- DECKS --------------------------------- */
 const Decks: React.FC = () => {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [newDeckName, setNewDeckName] = useState("");
@@ -171,7 +223,7 @@ const CardDatabase: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 
- 
+  const [selectedType, setSelectedType] = useState<string>("any");
   const [predictiveOptions, setPredictiveOptions] = useState<string[]>([]);
   const [isPredictiveLoading, setIsPredictiveLoading] = useState(false);
   const [predictiveDebounceId, setPredictiveDebounceId] = useState<number | null>(null);
@@ -192,7 +244,7 @@ const CardDatabase: React.FC = () => {
     fetchAllDecks();
   }, []);
 
-  
+
   useEffect(() => {
     return () => {
       if (predictiveDebounceId) window.clearTimeout(predictiveDebounceId);
@@ -202,9 +254,8 @@ const CardDatabase: React.FC = () => {
   const searchCards = async () => {
     setIsSearching(true);
     try {
-      const response = await fetch(
-        `/api/scryfall/search?q=${encodeURIComponent(scryfallQuery)}`
-      );
+      const finalQuery = buildQueryWithFilters(scryfallQuery, { type: selectedType });
+      const response = await fetch(`/api/scryfall/search?q=${encodeURIComponent(finalQuery)}`);
       const scryfallResponse = await response.json();
       const cards: ScryfallCard[] = scryfallResponse.data || [];
       setSearchResults(cards);
@@ -220,7 +271,7 @@ const CardDatabase: React.FC = () => {
     }
     setIsPredictiveLoading(true);
     try {
-      
+
       const response = await fetch(
         `https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(userInput)}`
       );
@@ -260,6 +311,24 @@ const CardDatabase: React.FC = () => {
       <Typography variant="h5">Card Database</Typography>
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="type-filter-label">Card Type</InputLabel>
+          <Select
+            labelId="type-filter-label"
+            label="Card Type"
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+          >
+            <MenuItem value="any">Any</MenuItem>
+            <MenuItem value="creature">Creature</MenuItem>
+            <MenuItem value="instant">Instant</MenuItem>
+            <MenuItem value="sorcery">Sorcery</MenuItem>
+            <MenuItem value="artifact">Artifact</MenuItem>
+            <MenuItem value="enchantment">Enchantment</MenuItem>
+            <MenuItem value="planeswalker">Planeswalker</MenuItem>
+            <MenuItem value="land">Land</MenuItem>
+          </Select>
+        </FormControl>
         <Autocomplete
           options={allDecks}
           value={selectedDeck}
@@ -409,8 +478,8 @@ const DeckView: React.FC = () => {
   const [deckSearchResults, setDeckSearchResults] = useState<ScryfallCard[]>([]);
   const [isDeckSearching, setIsDeckSearching] = useState(false);
   const [deckSnackbarMessage, setDeckSnackbarMessage] = useState<string | null>(null);
+  const [deckSelectedType, setDeckSelectedType] = useState<string>("any");
 
-  
   const [deckPredictiveOptions, setDeckPredictiveOptions] = useState<string[]>([]);
   const [isDeckPredictiveLoading, setIsDeckPredictiveLoading] = useState(false);
   const [deckPredictiveDebounceId, setDeckPredictiveDebounceId] = useState<number | null>(null);
@@ -440,9 +509,8 @@ const DeckView: React.FC = () => {
   const searchCardsForDeck = async () => {
     setIsDeckSearching(true);
     try {
-      const response = await fetch(
-        `/api/scryfall/search?q=${encodeURIComponent(deckSearchQuery)}`
-      );
+      const finalDeckQuery = buildQueryWithFilters(deckSearchQuery, { type: deckSelectedType });
+      const response = await fetch(`/api/scryfall/search?q=${encodeURIComponent(finalDeckQuery)}`);
       const scryfallResponse = await response.json();
       const cards: ScryfallCard[] = scryfallResponse.data || [];
       setDeckSearchResults(cards);
@@ -458,7 +526,7 @@ const DeckView: React.FC = () => {
     }
     setIsDeckPredictiveLoading(true);
     try {
-      
+
       const response = await fetch(
         `https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(userInput)}`
       );
@@ -506,6 +574,25 @@ const DeckView: React.FC = () => {
         </Typography>
         <Chip label={`${deckDetails.cards?.length ?? 0} unique cards`} />
       </Stack>
+
+      <FormControl size="small" sx={{ minWidth: 160 }}>
+        <InputLabel id="deck-type-filter-label">Card Type</InputLabel>
+        <Select
+          labelId="deck-type-filter-label"
+          label="Card Type"
+          value={deckSelectedType}
+          onChange={(e) => setDeckSelectedType(e.target.value)}
+        >
+          <MenuItem value="any">Any</MenuItem>
+          <MenuItem value="creature">Creature</MenuItem>
+          <MenuItem value="instant">Instant</MenuItem>
+          <MenuItem value="sorcery">Sorcery</MenuItem>
+          <MenuItem value="artifact">Artifact</MenuItem>
+          <MenuItem value="enchantment">Enchantment</MenuItem>
+          <MenuItem value="planeswalker">Planeswalker</MenuItem>
+          <MenuItem value="land">Land</MenuItem>
+        </Select>
+      </FormControl>
 
       <Autocomplete
         freeSolo
