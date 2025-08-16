@@ -14,14 +14,13 @@ import {
   CardContent,
   CardActions,
   TextField,
-  Paper,
-  InputBase,
   LinearProgress,
   CardMedia,
   Chip,
   Snackbar,
   Divider,
   Autocomplete,
+  CircularProgress,
 } from "@mui/material";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
@@ -77,6 +76,8 @@ const App: React.FC<AppProps> = ({ mode, setMode }) => {
     </>
   );
 };
+
+/* --------------------------------- DECKS --------------------------------- */
 
 const Decks: React.FC = () => {
   const [decks, setDecks] = useState<Deck[]>([]);
@@ -160,6 +161,7 @@ const Decks: React.FC = () => {
   );
 };
 
+/* ---------------------------- CARD DATABASE PAGE ---------------------------- */
 
 const CardDatabase: React.FC = () => {
   const [scryfallQuery, setScryfallQuery] = useState("type:creature power>3");
@@ -168,6 +170,12 @@ const CardDatabase: React.FC = () => {
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
+
+ 
+  const [predictiveOptions, setPredictiveOptions] = useState<string[]>([]);
+  const [isPredictiveLoading, setIsPredictiveLoading] = useState(false);
+  const [predictiveDebounceId, setPredictiveDebounceId] = useState<number | null>(null);
+
   const navigate = useNavigate();
 
   const fetchAllDecks = async () => {
@@ -184,6 +192,13 @@ const CardDatabase: React.FC = () => {
     fetchAllDecks();
   }, []);
 
+  
+  useEffect(() => {
+    return () => {
+      if (predictiveDebounceId) window.clearTimeout(predictiveDebounceId);
+    };
+  }, [predictiveDebounceId]);
+
   const searchCards = async () => {
     setIsSearching(true);
     try {
@@ -195,6 +210,24 @@ const CardDatabase: React.FC = () => {
       setSearchResults(cards);
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const fetchPredictiveOptions = async (userInput: string) => {
+    if (!userInput) {
+      setPredictiveOptions([]);
+      return;
+    }
+    setIsPredictiveLoading(true);
+    try {
+      
+      const response = await fetch(
+        `https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(userInput)}`
+      );
+      const responseJson = await response.json();
+      setPredictiveOptions(responseJson.data || []);
+    } finally {
+      setIsPredictiveLoading(false);
     }
   };
 
@@ -220,11 +253,6 @@ const CardDatabase: React.FC = () => {
     });
 
     setSnackbarMessage(`${cardToAdd.name} added to ${selectedDeck.name}`);
-  };
-
-  const handleSubmitSearch = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    searchCards();
   };
 
   return (
@@ -257,22 +285,58 @@ const CardDatabase: React.FC = () => {
           Create / Manage Decks
         </Button>
 
-        <Paper
-          component="form"
-          onSubmit={handleSubmitSearch}
-          sx={{ p: "2px 8px", display: "flex", alignItems: "center", flex: 1, minWidth: 260 }}
-          elevation={2}
-        >
-          <InputBase
-            sx={{ ml: 1, flex: 1 }}
-            placeholder="Scryfall query (e.g. t:instant cmc<=2)"
-            value={scryfallQuery}
-            onChange={(event) => setScryfallQuery(event.target.value)}
-          />
-          <IconButton type="submit" aria-label="search">
-            <SearchIcon />
-          </IconButton>
-        </Paper>
+        <Autocomplete
+          freeSolo
+          options={predictiveOptions}
+          loading={isPredictiveLoading}
+          inputValue={scryfallQuery}
+          onInputChange={(_event, newInputValue) => {
+            setScryfallQuery(newInputValue);
+            if (predictiveDebounceId) window.clearTimeout(predictiveDebounceId);
+            const timeoutId = window.setTimeout(() => {
+              fetchPredictiveOptions(newInputValue);
+            }, 250);
+            setPredictiveDebounceId(timeoutId);
+          }}
+          onChange={(_event, selectedValue) => {
+            if (!selectedValue) return;
+            setScryfallQuery(selectedValue);
+            searchCards();
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              size="small"
+              placeholder="Search cards… (e.g. t:instant cmc<=2)"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  searchCards();
+                }
+              }}
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {isPredictiveLoading ? <CircularProgress size={18} /> : null}
+                    {params.InputProps.endAdornment}
+                    <IconButton
+                      aria-label="search"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        searchCards();
+                      }}
+                      edge="end"
+                    >
+                      <SearchIcon />
+                    </IconButton>
+                  </>
+                ),
+              }}
+            />
+          )}
+          sx={{ flex: 1, minWidth: 260 }}
+        />
       </Stack>
 
       {isSearching && <LinearProgress />}
@@ -335,6 +399,8 @@ const CardDatabase: React.FC = () => {
   );
 };
 
+/* ------------------------------- DECK VIEW ------------------------------- */
+
 const DeckView: React.FC = () => {
   const { id: deckIdParam } = useParams();
   const [deckDetails, setDeckDetails] = useState<any>(null);
@@ -343,6 +409,11 @@ const DeckView: React.FC = () => {
   const [deckSearchResults, setDeckSearchResults] = useState<ScryfallCard[]>([]);
   const [isDeckSearching, setIsDeckSearching] = useState(false);
   const [deckSnackbarMessage, setDeckSnackbarMessage] = useState<string | null>(null);
+
+  
+  const [deckPredictiveOptions, setDeckPredictiveOptions] = useState<string[]>([]);
+  const [isDeckPredictiveLoading, setIsDeckPredictiveLoading] = useState(false);
+  const [deckPredictiveDebounceId, setDeckPredictiveDebounceId] = useState<number | null>(null);
 
   const fetchDeckDetails = async (deckId: string | undefined) => {
     if (!deckId) return;
@@ -359,6 +430,13 @@ const DeckView: React.FC = () => {
     fetchDeckDetails(deckIdParam);
   }, [deckIdParam]);
 
+
+  useEffect(() => {
+    return () => {
+      if (deckPredictiveDebounceId) window.clearTimeout(deckPredictiveDebounceId);
+    };
+  }, [deckPredictiveDebounceId]);
+
   const searchCardsForDeck = async () => {
     setIsDeckSearching(true);
     try {
@@ -370,6 +448,24 @@ const DeckView: React.FC = () => {
       setDeckSearchResults(cards);
     } finally {
       setIsDeckSearching(false);
+    }
+  };
+
+  const fetchDeckPredictiveOptions = async (userInput: string) => {
+    if (!userInput) {
+      setDeckPredictiveOptions([]);
+      return;
+    }
+    setIsDeckPredictiveLoading(true);
+    try {
+      
+      const response = await fetch(
+        `https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(userInput)}`
+      );
+      const responseJson = await response.json();
+      setDeckPredictiveOptions(responseJson.data || []);
+    } finally {
+      setIsDeckPredictiveLoading(false);
     }
   };
 
@@ -397,7 +493,6 @@ const DeckView: React.FC = () => {
     });
 
     setDeckSnackbarMessage(`${cardToAdd.name} added to deck`);
-    
     fetchDeckDetails(deckIdParam);
   };
 
@@ -412,22 +507,58 @@ const DeckView: React.FC = () => {
         <Chip label={`${deckDetails.cards?.length ?? 0} unique cards`} />
       </Stack>
 
-      <Paper
-        component="form"
-        onSubmit={handleSubmitDeckSearch}
-        sx={{ p: "2px 8px", display: "flex", alignItems: "center", minHeight: 48 }}
-        elevation={2}
-      >
-        <InputBase
-          sx={{ ml: 1, flex: 1 }}
-          placeholder="Search cards to add (e.g. type:instant cmc<=2)"
-          value={deckSearchQuery}
-          onChange={(event) => setDeckSearchQuery(event.target.value)}
-        />
-        <IconButton type="submit" aria-label="search">
-          <SearchIcon />
-        </IconButton>
-      </Paper>
+      <Autocomplete
+        freeSolo
+        options={deckPredictiveOptions}
+        loading={isDeckPredictiveLoading}
+        inputValue={deckSearchQuery}
+        onInputChange={(_event, newInputValue) => {
+          setDeckSearchQuery(newInputValue);
+          if (deckPredictiveDebounceId) window.clearTimeout(deckPredictiveDebounceId);
+          const timeoutId = window.setTimeout(() => {
+            fetchDeckPredictiveOptions(newInputValue);
+          }, 250);
+          setDeckPredictiveDebounceId(timeoutId);
+        }}
+        onChange={(_event, selectedValue) => {
+          if (!selectedValue) return;
+          setDeckSearchQuery(selectedValue);
+          searchCardsForDeck();
+        }}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            size="small"
+            placeholder="Search cards to add… (e.g. t:instant cmc<=2)"
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                handleSubmitDeckSearch(event as unknown as React.FormEvent<HTMLFormElement>);
+              }
+            }}
+            InputProps={{
+              ...params.InputProps,
+              endAdornment: (
+                <>
+                  {isDeckPredictiveLoading ? <CircularProgress size={18} /> : null}
+                  {params.InputProps.endAdornment}
+                  <IconButton
+                    aria-label="search"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      searchCardsForDeck();
+                    }}
+                    edge="end"
+                  >
+                    <SearchIcon />
+                  </IconButton>
+                </>
+              ),
+            }}
+          />
+        )}
+        sx={{ minHeight: 48 }}
+      />
 
       {isDeckSearching && <LinearProgress />}
 
