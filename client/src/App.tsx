@@ -49,13 +49,13 @@ type ScryfallCard = {
 };
 
 const SET_OPTIONS = [
-    { code: "any", label: "Any Set" },
-    { code: "mh3", label: "Modern Horizons 3" },
-    { code: "otj", label: "Outlaws of Thunder Junction" },
-    { code: "rvr", label: "Ravnica Remastered" },
-    { code: "ltr", label: "The Lord of the Rings: Tales of Middle-earth" },
-    { code: "one", label: "Phyrexia: All Will Be One" },
-  ];
+  { code: "any", label: "Any Set" },
+  { code: "mh3", label: "Modern Horizons 3" },
+  { code: "otj", label: "Outlaws of Thunder Junction" },
+  { code: "rvr", label: "Ravnica Remastered" },
+  { code: "ltr", label: "The Lord of the Rings: Tales of Middle-earth" },
+  { code: "one", label: "Phyrexia: All Will Be One" },
+];
 
 const App: React.FC<AppProps> = ({ mode, setMode }) => {
   const handleToggleTheme = () => setMode(mode === "light" ? "dark" : "light");
@@ -223,10 +223,13 @@ const CardDatabase: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 
+  //filters
   const [selectedType, setSelectedType] = useState<string>("any");
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [cmcRange, setCmcRange] = useState<[number, number]>([0, 20]);
   const [selectedSet, setSelectedSet] = useState<string>("any");
+
+  //predictive text
   const [predictiveOptions, setPredictiveOptions] = useState<string[]>([]);
   const [isPredictiveLoading, setIsPredictiveLoading] = useState(false);
   const [predictiveDebounceId, setPredictiveDebounceId] = useState<number | null>(null);
@@ -318,158 +321,166 @@ const CardDatabase: React.FC = () => {
     <Stack spacing={2}>
       <Typography variant="h5">Card Database</Typography>
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1}
-          alignItems={"center"}
-        >
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Typography variant="body2" sx={{ mr: 1.5, whiteSpace: "nowrap" }}>
-              Colors
-            </Typography>
-            <ToggleButtonGroup
-              value={selectedColors}
-              onChange={(_e, next) => setSelectedColors(next ?? [])}
-              size="small"
-              aria-label="colors"
-            >
-              <ToggleButton value="W" aria-label="white">W</ToggleButton>
-              <ToggleButton value="U" aria-label="blue">U</ToggleButton>
-              <ToggleButton value="B" aria-label="black">B</ToggleButton>
-              <ToggleButton value="R" aria-label="red">R</ToggleButton>
-              <ToggleButton value="G" aria-label="green">G</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", minWidth: 240 }}>
-            <Typography variant="body2" sx={{ mr: 1.5, whiteSpace: "nowrap" }}>
-              Mana Value
-            </Typography>
-            <Box sx={{ px: 1, flex: 1, minWidth: 160 }}>
-              <Slider
-                value={cmcRange}
-                min={0}
-                max={20}
-                step={1}
-                onChange={(_e, next) => setCmcRange(next as [number, number])}
-                valueLabelDisplay="auto"
-                getAriaLabel={() => "Mana value range"}
-              />
+      <Stack spacing={1.5}>
+        <Grid container spacing={1} alignItems="center">
+          <Grid item xs={12} sm="auto">
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Typography variant="body2" sx={{ mr: 1.5, whiteSpace: "nowrap" }}>
+                Colors
+              </Typography>
+              <ToggleButtonGroup
+                value={selectedColors}
+                onChange={(_e, next) => setSelectedColors(next ?? [])}
+                size="small"
+                aria-label="colors"
+              >
+                <ToggleButton value="W" aria-label="white">W</ToggleButton>
+                <ToggleButton value="U" aria-label="blue">U</ToggleButton>
+                <ToggleButton value="B" aria-label="black">B</ToggleButton>
+                <ToggleButton value="R" aria-label="red">R</ToggleButton>
+                <ToggleButton value="G" aria-label="green">G</ToggleButton>
+              </ToggleButtonGroup>
             </Box>
-          </Box>
+          </Grid>
 
-          <FormControl size="small" sx={{ minWidth: 220 }}>
-            <InputLabel id="set-filter-label">Set</InputLabel>
-            <Select
-              labelId="set-filter-label"
-              label="Set"
-              value={selectedSet}
-              onChange={(e) => setSelectedSet(e.target.value)}
-            >
-              {SET_OPTIONS.map((opt) => (
-                <MenuItem key={opt.code} value={opt.code}>
-                  {opt.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Stack>
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="type-filter-label">Card Type</InputLabel>
-          <Select
-            labelId="type-filter-label"
-            label="Card Type"
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-          >
-            <MenuItem value="any">Any</MenuItem>
-            <MenuItem value="creature">Creature</MenuItem>
-            <MenuItem value="instant">Instant</MenuItem>
-            <MenuItem value="sorcery">Sorcery</MenuItem>
-            <MenuItem value="artifact">Artifact</MenuItem>
-            <MenuItem value="enchantment">Enchantment</MenuItem>
-            <MenuItem value="planeswalker">Planeswalker</MenuItem>
-            <MenuItem value="land">Land</MenuItem>
-          </Select>
-        </FormControl>
-        <Autocomplete
-          options={allDecks}
-          value={selectedDeck}
-          onChange={(_event, newValue) => setSelectedDeck(newValue)}
-          getOptionLabel={(deckOption) => `${deckOption.name} (ID: ${deckOption.id})`}
-          isOptionEqualToValue={(option, value) => option.id === value.id}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              size="small"
-              label="Select a Deck"
-              placeholder="Type deck name…"
+          <Grid item xs={12} md>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Typography variant="body2" sx={{ mr: 1.5, whiteSpace: "nowrap" }}>
+                Mana Value
+              </Typography>
+              <Box sx={{ px: 1, flex: 1, minWidth: 160 }}>
+                <Slider
+                  value={cmcRange}
+                  min={0}
+                  max={20}
+                  step={1}
+                  onChange={(_e, next) => setCmcRange(next as [number, number])}
+                  valueLabelDisplay="auto"
+                  getAriaLabel={() => "Mana value range"}
+                />
+              </Box>
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl size="small" fullWidth>
+              <InputLabel id="set-filter-label">Set</InputLabel>
+              <Select
+                labelId="set-filter-label"
+                label="Set"
+                value={selectedSet}
+                onChange={(e) => setSelectedSet(e.target.value)}
+              >
+                {SET_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.code} value={opt.code}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={2.5}>
+            <FormControl size="small" fullWidth>
+              <InputLabel id="type-filter-label">Card Type</InputLabel>
+              <Select
+                labelId="type-filter-label"
+                label="Card Type"
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+              >
+                <MenuItem value="any">Any</MenuItem>
+                <MenuItem value="creature">Creature</MenuItem>
+                <MenuItem value="instant">Instant</MenuItem>
+                <MenuItem value="sorcery">Sorcery</MenuItem>
+                <MenuItem value="artifact">Artifact</MenuItem>
+                <MenuItem value="enchantment">Enchantment</MenuItem>
+                <MenuItem value="planeswalker">Planeswalker</MenuItem>
+                <MenuItem value="land">Land</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+
+        <Grid container spacing={1} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <Autocomplete
+              options={allDecks}
+              value={selectedDeck}
+              onChange={(_event, newValue) => setSelectedDeck(newValue)}
+              getOptionLabel={(deckOption) => `${deckOption.name} (ID: ${deckOption.id})`}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  size="small"
+                  label="Select a Deck"
+                  placeholder="Type deck name…"
+                />
+              )}
             />
-          )}
-          sx={{ width: { xs: "100%", sm: 360 } }}
-        />
+          </Grid>
 
-        <Button
-          variant="outlined"
-          onClick={() => navigate("/")}
-          sx={{ whiteSpace: "nowrap" }}
-        >
-          Create / Manage Decks
-        </Button>
+          <Grid item xs={12} sm="auto">
+            <Button variant="outlined" onClick={() => navigate("/")} sx={{ whiteSpace: "nowrap" }}>
+              Create / Manage Decks
+            </Button>
+          </Grid>
 
-        <Autocomplete
-          freeSolo
-          options={predictiveOptions}
-          loading={isPredictiveLoading}
-          inputValue={scryfallQuery}
-          onInputChange={(_event, newInputValue) => {
-            setScryfallQuery(newInputValue);
-            if (predictiveDebounceId) window.clearTimeout(predictiveDebounceId);
-            const timeoutId = window.setTimeout(() => {
-              fetchPredictiveOptions(newInputValue);
-            }, 250);
-            setPredictiveDebounceId(timeoutId);
-          }}
-          onChange={(_event, selectedValue) => {
-            if (!selectedValue) return;
-            setScryfallQuery(selectedValue);
-            searchCards();
-          }}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              size="small"
-              placeholder="Search cards… (e.g. t:instant cmc<=2)"
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  searchCards();
-                }
+          <Grid item xs={12} md>
+            <Autocomplete
+              freeSolo
+              options={predictiveOptions}
+              loading={isPredictiveLoading}
+              inputValue={scryfallQuery}
+              onInputChange={(_event, newInputValue) => {
+                setScryfallQuery(newInputValue);
+                if (predictiveDebounceId) window.clearTimeout(predictiveDebounceId);
+                const timeoutId = window.setTimeout(() => {
+                  fetchPredictiveOptions(newInputValue);
+                }, 250);
+                setPredictiveDebounceId(timeoutId);
               }}
-              InputProps={{
-                ...params.InputProps,
-                endAdornment: (
-                  <>
-                    {isPredictiveLoading ? <CircularProgress size={18} /> : null}
-                    {params.InputProps.endAdornment}
-                    <IconButton
-                      aria-label="search"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        searchCards();
-                      }}
-                      edge="end"
-                    >
-                      <SearchIcon />
-                    </IconButton>
-                  </>
-                ),
+              onChange={(_event, selectedValue) => {
+                if (!selectedValue) return;
+                setScryfallQuery(selectedValue);
+                searchCards();
               }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  size="small"
+                  placeholder="Search cards… (e.g. t:instant cmc<=2)"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      searchCards();
+                    }
+                  }}
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {isPredictiveLoading ? <CircularProgress size={18} /> : null}
+                        {params.InputProps.endAdornment}
+                        <IconButton
+                          aria-label="search"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            searchCards();
+                          }}
+                          edge="end"
+                        >
+                          <SearchIcon />
+                        </IconButton>
+                      </>
+                    ),
+                  }}
+                />
+              )}
             />
-          )}
-          sx={{ flex: 1, minWidth: 260 }}
-        />
+          </Grid>
+        </Grid>
       </Stack>
 
       {isSearching && <LinearProgress />}
