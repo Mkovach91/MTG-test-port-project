@@ -48,6 +48,15 @@ type ScryfallCard = {
   image_uris?: { normal?: string };
 };
 
+const SET_OPTIONS = [
+    { code: "any", label: "Any Set" },
+    { code: "mh3", label: "Modern Horizons 3" },
+    { code: "otj", label: "Outlaws of Thunder Junction" },
+    { code: "rvr", label: "Ravnica Remastered" },
+    { code: "ltr", label: "The Lord of the Rings: Tales of Middle-earth" },
+    { code: "one", label: "Phyrexia: All Will Be One" },
+  ];
+
 const App: React.FC<AppProps> = ({ mode, setMode }) => {
   const handleToggleTheme = () => setMode(mode === "light" ? "dark" : "light");
 
@@ -223,15 +232,6 @@ const CardDatabase: React.FC = () => {
   const [predictiveDebounceId, setPredictiveDebounceId] = useState<number | null>(null);
 
   const navigate = useNavigate();
-
-  const SET_OPTIONS = [
-    { code: "any", label: "Any Set" },
-    { code: "mh3", label: "Modern Horizons 3" },
-    { code: "otj", label: "Outlaws of Thunder Junction" },
-    { code: "rvr", label: "Ravnica Remastered" },
-    { code: "ltr", label: "The Lord of the Rings: Tales of Middle-earth" },
-    { code: "one", label: "Phyrexia: All Will Be One" },
-  ];
 
   const fetchAllDecks = async () => {
     try {
@@ -543,7 +543,9 @@ const DeckView: React.FC = () => {
   const [isDeckSearching, setIsDeckSearching] = useState(false);
   const [deckSnackbarMessage, setDeckSnackbarMessage] = useState<string | null>(null);
   const [deckSelectedType, setDeckSelectedType] = useState<string>("any");
-
+  const [deckSelectedColors, setDeckSelectedColors] = useState<string[]>([]);
+  const [deckCmcRange, setDeckCmcRange] = useState<[number, number]>([0, 20]);
+  const [deckSelectedSet, setDeckSelectedSet] = useState<string>("any");
   const [deckPredictiveOptions, setDeckPredictiveOptions] = useState<string[]>([]);
   const [isDeckPredictiveLoading, setIsDeckPredictiveLoading] = useState(false);
   const [deckPredictiveDebounceId, setDeckPredictiveDebounceId] = useState<number | null>(null);
@@ -573,7 +575,12 @@ const DeckView: React.FC = () => {
   const searchCardsForDeck = async () => {
     setIsDeckSearching(true);
     try {
-      const finalDeckQuery = buildQueryWithFilters(deckSearchQuery, { type: deckSelectedType });
+      const finalDeckQuery = buildQueryWithFilters(deckSearchQuery, {
+        type: deckSelectedType,
+        colors: deckSelectedColors,
+        cmc: deckCmcRange,
+        setCode: deckSelectedSet,
+      });
       const response = await fetch(`/api/scryfall/search?q=${encodeURIComponent(finalDeckQuery)}`);
       const scryfallResponse = await response.json();
       const cards: ScryfallCard[] = scryfallResponse.data || [];
@@ -657,7 +664,62 @@ const DeckView: React.FC = () => {
           <MenuItem value="land">Land</MenuItem>
         </Select>
       </FormControl>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1}
+        alignItems="center"
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <Typography variant="body2" sx={{ mr: 1.5, whiteSpace: "nowrap" }}>
+            Colors
+          </Typography>
+          <ToggleButtonGroup
+            value={deckSelectedColors}
+            onChange={(_e, next) => setDeckSelectedColors(next ?? [])}
+            size="small"
+            aria-label="colors"
+          >
+            <ToggleButton value="W" aria-label="white">W</ToggleButton>
+            <ToggleButton value="U" aria-label="blue">U</ToggleButton>
+            <ToggleButton value="B" aria-label="black">B</ToggleButton>
+            <ToggleButton value="R" aria-label="red">R</ToggleButton>
+            <ToggleButton value="G" aria-label="green">G</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
 
+        <Box sx={{ display: "flex", alignItems: "center", minWidth: 240 }}>
+          <Typography variant="body2" sx={{ mr: 1.5, whiteSpace: "nowrap" }}>
+            Mana Value
+          </Typography>
+          <Box sx={{ px: 1, flex: 1, minWidth: 160 }}>
+            <Slider
+              value={deckCmcRange}
+              min={0}
+              max={20}
+              step={1}
+              onChange={(_e, next) => setDeckCmcRange(next as [number, number])}
+              valueLabelDisplay="auto"
+              getAriaLabel={() => "Mana value range"}
+            />
+          </Box>
+        </Box>
+
+        <FormControl size="small" sx={{ minWidth: 220 }}>
+          <InputLabel id="deck-set-filter-label">Set</InputLabel>
+          <Select
+            labelId="deck-set-filter-label"
+            label="Set"
+            value={deckSelectedSet}
+            onChange={(e) => setDeckSelectedSet(e.target.value)}
+          >
+            {SET_OPTIONS.map((opt) => (
+              <MenuItem key={opt.code} value={opt.code}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
       <Autocomplete
         freeSolo
         options={deckPredictiveOptions}
