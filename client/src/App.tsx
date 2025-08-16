@@ -109,7 +109,7 @@ const buildQueryWithFilters = (
 
   if (filters.type && filters.type !== "any") searchQuery += ` t:${filters.type}`;
 
-  if (filters.color && filters.colors.length > 0) {
+  if (filters.colors && filters.colors.length > 0) {
     const joined = filters.colors.join("");
     searchQuery += ` id<=${joined}`;
   }
