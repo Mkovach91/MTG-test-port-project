@@ -342,6 +342,23 @@ const CardDatabase: React.FC = () => {
             </ToggleButtonGroup>
           </Box>
 
+          <Box sx={{ display: "flex", alignItems: "center", minWidth: 240 }}>
+            <Typography variant="body2" sx={{ mr: 1.5, whiteSpace: "nowrap" }}>
+              Mana Value
+            </Typography>
+            <Box sx={{ px: 1, flex: 1, minWidth: 160 }}>
+              <Slider
+                value={cmcRange}
+                min={0}
+                max={20}
+                step={1}
+                onChange={(_e, next) => setCmcRange(next as [number, number])}
+                valueLabelDisplay="auto"
+                getAriaLabel={() => "Mana value range"}
+                />
+            </Box>
+          </Box>
+
         </Stack>
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel id="type-filter-label">Card Type</InputLabel>
