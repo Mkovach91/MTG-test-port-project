@@ -120,15 +120,6 @@ const buildQueryWithFilters = (
 
   return searchQuery.trim();
 
-  const SET_OPTIONS = [
-    { code: "any", label: "Any Set" },
-    { code: "mh3", label: "Modern Horizons 3" },
-    { code: "otj", label: "Outlaws of Thunder Junction" },
-    { code: "rvr", label: "Ravnica Remastered" },
-    { code: "ltr", label: "The Lord of the Rings: Tales of Middle-earth" },
-    { code: "one", label: "Phyrexia: All Will Be One" },
-  ];
-
 }
 /* --------------------------------- DECKS --------------------------------- */
 const Decks: React.FC = () => {
@@ -232,6 +223,15 @@ const CardDatabase: React.FC = () => {
   const [predictiveDebounceId, setPredictiveDebounceId] = useState<number | null>(null);
 
   const navigate = useNavigate();
+
+  const SET_OPTIONS = [
+    { code: "any", label: "Any Set" },
+    { code: "mh3", label: "Modern Horizons 3" },
+    { code: "otj", label: "Outlaws of Thunder Junction" },
+    { code: "rvr", label: "Ravnica Remastered" },
+    { code: "ltr", label: "The Lord of the Rings: Tales of Middle-earth" },
+    { code: "one", label: "Phyrexia: All Will Be One" },
+  ];
 
   const fetchAllDecks = async () => {
     try {
@@ -355,10 +355,25 @@ const CardDatabase: React.FC = () => {
                 onChange={(_e, next) => setCmcRange(next as [number, number])}
                 valueLabelDisplay="auto"
                 getAriaLabel={() => "Mana value range"}
-                />
+              />
             </Box>
           </Box>
 
+          <FormControl size="small" sx={{ minWidth: 220 }}>
+            <InputLabel id="set-filter-label">Set</InputLabel>
+            <Select
+              labelId="set-filter-label"
+              label="Set"
+              value={selectedSet}
+              onChange={(e) => setSelectedSet(e.target.value)}
+            >
+              {SET_OPTIONS.map((opt) => (
+                <MenuItem key={opt.code} value={opt.code}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Stack>
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel id="type-filter-label">Card Type</InputLabel>
